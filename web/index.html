@@ -94,6 +94,17 @@
   }
   .opts { display: grid; gap: 10px; }
   @media (min-width: 600px) { .opts { grid-template-columns: 1fr 1fr; } }
+  .eng-input {
+    width: 100%; border: 3px solid #FFE0C7; outline: none; font: inherit; color: inherit;
+    -webkit-user-select: text; user-select: text;
+  }
+  .eng-input:focus { border-color: var(--orange); }
+  .prompt { font-size: 22px; font-weight: 700; text-align: center; color: var(--blue); }
+  .reveal { min-height: 72px; display: flex; align-items: center; justify-content: center; }
+  .link { background: none; color: var(--blue); font-size: 20px; padding: 8px 16px; }
+  .say-num { font-size: 120px; font-weight: 700; line-height: 1; text-align: center; }
+  .say-en { font-size: 56px; font-weight: 700; color: var(--blue); text-align: center; }
+  .big.listening { background: var(--red); }
   .result { justify-content: center; align-items: center; text-align: center; }
   .stars { font-size: 48px; color: #FFB300; }
 
@@ -214,13 +225,44 @@ const words = {
       W("mountain","山","⛰️"),W("ocean","海洋","🌊"),W("island","島嶼","🏝️"),W("firefighter","消防員","🧑‍🚒"),W("vegetable","蔬菜","🥦"),W("dictionary","字典","📕")],
 };
 
+// 英文數字 1～10
+const NUM_EN = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
+const NUM_ZH = ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十"];
+// 語音辨識常聽成的同音字也算對
+const NUM_ALIASES = { 1: ["won"], 2: ["to", "too"], 3: ["tree"], 4: ["for", "fore"], 8: ["ate"] };
+const NUM_MODES = {
+  1: { emoji: "👂", title: "聽中文，寫英文", desc: "聽到「三」，打出 three" },
+  2: { emoji: "🔢", title: "聽英文，寫數字", desc: "聽到 three，按出 3" },
+  3: { emoji: "🎤", title: "看數字，說英文", desc: "看到 3 three，對著麥克風念出來" },
+};
+const MAX_TRIES = 3;
+
+function spokenMatches(n, alternatives) {
+  const ok = new Set([NUM_EN[n - 1], String(n), ...(NUM_ALIASES[n] || [])]);
+  return alternatives.some(t => t.toLowerCase().split(/[^a-z0-9]+/).some(w => ok.has(w)));
+}
+
 // ---------- 小工具 ----------
-function speak(text) {
+function speak(text, lang = "en-US") {
   if (!("speechSynthesis" in window)) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = "en-US"; u.rate = 0.8;
+  u.lang = lang; u.rate = 0.8;
   speechSynthesis.speak(u);
+}
+
+const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+function listen(onResult, onFail) {
+  const rec = new Recognition();
+  let got = false;
+  rec.lang = "en-US";
+  rec.interimResults = false;
+  rec.maxAlternatives = 5;
+  rec.onresult = (e) => { got = true; onResult(Array.from(e.results[0], a => a.transcript)); };
+  rec.onerror = (e) => { if (!got) { got = true; onFail(e.error); } };
+  rec.onend = () => { if (!got) onFail("no-speech"); };
+  rec.start();
 }
 
 const store = {
@@ -256,6 +298,8 @@ function render() {
     case "cards": return renderCards();
     case "english": return renderEnglishQuiz();
     case "result": return renderResult();
+    case "numMenu": return renderNumMenu();
+    case "numQuiz": return renderNumQuiz();
   }
 }
 
@@ -272,6 +316,7 @@ function renderHome() {
       <button class="card" style="background:#C8E6C9" data-go="times"><span class="emoji">✖️</span><div><b>九九乘法</b><span>背乘法表、挑戰小測驗</span></div></button>
       <button class="card" style="background:#BBDEFB" data-go="cards"><span class="emoji">🔤</span><div><b>英文單字卡</b><span>看圖、聽發音、記單字</span></div></button>
       <button class="card" style="background:#E1BEE7" data-go="english"><span class="emoji">📝</span><div><b>英文小測驗</b><span>看圖選出正確的單字</span></div></button>
+      <button class="card" style="background:#FFF59D" data-go="numMenu"><span class="emoji">🔟</span><div><b>英文數字 1～10</b><span>聽、寫、說三種題型</span></div></button>
     </div>`;
 }
 
@@ -318,11 +363,16 @@ function submitNumber() {
 function nextQuestion() {
   const s = state;
   if (s.index === s.questions.length - 1) {
-    const retry = s.screen === "math" ? { screen: "math" } : s.screen === "timesQuiz" ? { screen: "timesQuiz", n: s.n } : { screen: "english" };
+    const retry = s.screen === "math" ? { screen: "math" }
+      : s.screen === "timesQuiz" ? { screen: "timesQuiz", n: s.n }
+      : s.screen === "numQuiz" ? { screen: "numQuiz", mode: s.mode }
+      : { screen: "english" };
     go("result", { score: s.score, total: s.questions.length, retry });
   } else {
     s.index++; s.input = ""; s.correct = null; s.chosen = null;
+    s.revealed = false; s.tries = 0; s.heard = null;
     render();
+    if (s.screen === "numQuiz") speakNumQuestion();
   }
 }
 
@@ -414,6 +464,7 @@ function retry() {
   const r = state.retry;
   if (r.screen === "math") openScreen("math");
   else if (r.screen === "timesQuiz") startTimes(r.n);
+  else if (r.screen === "numQuiz") startNumQuiz(r.mode);
   else openScreen("english");
 }
 
@@ -429,9 +480,141 @@ function openScreen(screen) {
   else go(screen);
 }
 
+function renderNumMenu() {
+  app.innerHTML = `
+    ${topbar("英文數字 1～10")}
+    <p style="font-size:18px">每次 10 題，1～10 順序打亂。選一種題型：</p>
+    <div class="menu">${[1, 2, 3].map(m => `
+      <button class="card" style="background:#FFF59D" data-mode="${m}">
+        <span class="emoji">${NUM_MODES[m].emoji}</span>
+        <div><b>${m}. ${NUM_MODES[m].title}</b><span>${NUM_MODES[m].desc}</span></div>
+      </button>`).join("")}
+    </div>`;
+}
+
+function startNumQuiz(mode) {
+  go("numQuiz", {
+    mode, questions: shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]), index: 0, score: 0,
+    input: "", correct: null, revealed: false, tries: 0, heard: null, listening: false,
+  });
+  speakNumQuestion();
+}
+
+function speakNumQuestion() {
+  const s = state, n = s.questions[s.index];
+  if (s.mode === 1) speak(NUM_ZH[n - 1], "zh-TW");
+  else if (s.mode === 2) speak(NUM_EN[n - 1]);
+}
+
+function renderNumQuiz() {
+  const s = state, n = s.questions[s.index], en = NUM_EN[n - 1], zh = NUM_ZH[n - 1];
+  const last = s.index === s.questions.length - 1, answered = s.correct !== null;
+  const cls = !answered ? "" : s.correct ? "ok" : "bad";
+  const feedback = !answered ? "" : s.correct ? "🎉 答對了！好棒！" : `💪 正確答案是 ${n} ${en}`;
+  const nextBtn = `<button class="big blue" data-act="next">${last ? "看成績 🏆" : "下一題 →"}</button>`;
+  const head = `
+    ${topbar(`${s.mode}. ${NUM_MODES[s.mode].title}`, "numMenu")}
+    <p class="center" style="font-size:18px">第 ${s.index + 1} / ${s.questions.length} 題　⭐ ${s.score}</p>
+    <div class="progress"><div style="width:${s.index / s.questions.length * 100}%"></div></div>`;
+
+  if (s.mode === 1) {
+    app.innerHTML = `${head}
+      <p class="prompt">👂 聽中文，寫出英文</p>
+      <button class="big blue" data-act="replay">🔊 再聽一次</button>
+      <div class="reveal"><span style="font-size:60px;font-weight:700">${zh}</span></div>
+      <input id="eng" class="answer eng-input ${cls}" value="${esc(s.input)}" placeholder="在這裡打英文"
+        autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done" ${answered ? "disabled" : ""}>
+      <div class="feedback ${cls}">${feedback}</div>
+      <div class="grow"></div>
+      ${answered ? nextBtn : `<button class="big" data-act="submitEng">確定</button>`}`;
+    if (!answered) document.getElementById("eng").focus();
+  } else if (s.mode === 2) {
+    const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "⌫"];
+    app.innerHTML = `${head}
+      <p class="prompt">👂 聽英文，寫出數字</p>
+      <button class="big blue" data-act="replay">🔊 再聽一次</button>
+      <div class="reveal">${s.revealed || answered ? `<span class="say-en" style="font-size:48px">${en}</span>` : `<button class="link" data-act="reveal">👀 聽不到？看英文</button>`}</div>
+      <div class="answer ${cls}">${esc(s.input) || "&nbsp;"}</div>
+      <div class="feedback ${cls}">${feedback}</div>
+      <div class="grow"></div>
+      ${answered ? nextBtn : `
+        <div class="pad">${keys.map(k => k ? `<button class="key" data-key="${k}">${k}</button>` : "<span></span>").join("")}</div>
+        <button class="big" data-act="submitNum" ${s.input ? "" : "disabled"}>確定</button>`}`;
+  } else {
+    const hint = !Recognition
+      ? "😢 這個瀏覽器不支援語音辨識，請改用 Chrome 或 Safari"
+      : s.listening ? "🎙️ 正在聽，請說英文…"
+      : s.heard ? `我聽到「${esc(s.heard)}」，再試一次（還有 ${MAX_TRIES - s.tries} 次）`
+      : "按下麥克風，大聲念出英文";
+    app.innerHTML = `${head}
+      <p class="prompt">🎤 看著念念看</p>
+      <div class="say-num">${n}</div>
+      <div class="say-en">${en}</div>
+      <div class="center" style="font-size:40px;font-weight:700">${zh}</div>
+      <button class="big blue" data-act="replay">🔊 聽示範</button>
+      <div class="feedback ${cls}">${feedback}</div>
+      <p class="center muted" style="font-size:18px">${answered ? "" : hint}</p>
+      <div class="grow"></div>
+      ${answered ? nextBtn : `
+        <button class="big ${s.listening ? "listening" : ""}" data-act="listen" ${!Recognition || s.listening ? "disabled" : ""}>${s.listening ? "🎙️ 正在聽…" : "🎤 按我說英文"}</button>
+        <button class="link" data-act="skip">跳過這題</button>`}`;
+  }
+}
+
+function finishNum(ok) {
+  const s = state, n = s.questions[s.index];
+  s.correct = ok;
+  if (ok) s.score++;
+  render();
+  if (s.mode !== 3) speak(NUM_EN[n - 1]);
+}
+
+function submitEng() {
+  const s = state, el = document.getElementById("eng");
+  if (s.correct !== null || !el) return;
+  s.input = el.value;
+  if (!s.input.trim()) return;
+  finishNum(s.input.trim().toLowerCase() === NUM_EN[s.questions[s.index] - 1]);
+}
+
+function submitNumQuiz() {
+  const s = state;
+  if (s.correct !== null || !s.input) return;
+  finishNum(Number(s.input) === s.questions[s.index]);
+}
+
+function startListening() {
+  const s = state;
+  if (!Recognition || s.listening || s.correct !== null) return;
+  const index = s.index;
+  s.listening = true;
+  render();
+  const done = (alternatives) => {
+    if (state !== s || s.index !== index) return; // 已經換題或離開
+    s.listening = false;
+    if (alternatives && spokenMatches(s.questions[index], alternatives)) return finishNum(true);
+    s.tries++;
+    s.heard = alternatives && alternatives[0] ? alternatives[0] : "（沒聽清楚）";
+    if (s.tries >= MAX_TRIES) return finishNum(false);
+    render();
+  };
+  try {
+    listen(done, (err) => {
+      if (err === "not-allowed" || err === "service-not-allowed") {
+        s.listening = false;
+        alert("需要允許使用麥克風才能做語音題喔！");
+        render();
+      } else done(null);
+    });
+  } catch (e) {
+    s.listening = false;
+    render();
+  }
+}
+
 // ---------- 事件 ----------
 app.addEventListener("click", (e) => {
-  const b = e.target.closest("[data-go],[data-grade],[data-key],[data-act],[data-n],[data-times],[data-say],[data-card],[data-opt]");
+  const b = e.target.closest("[data-go],[data-grade],[data-key],[data-act],[data-n],[data-times],[data-say],[data-card],[data-opt],[data-mode]");
   if (!b || b.disabled) return;
   const d = b.dataset;
   if (d.go) openScreen(d.go);
@@ -440,6 +623,17 @@ app.addEventListener("click", (e) => {
   else if (d.act === "submit") submitNumber();
   else if (d.act === "next") nextQuestion();
   else if (d.act === "retry") retry();
+  else if (d.act === "replay") {
+    // 第 3 種題型的「聽示範」念英文，其他題型重念題目
+    if (state.mode === 3) speak(NUM_EN[state.questions[state.index] - 1]);
+    else speakNumQuestion();
+  }
+  else if (d.act === "reveal") { if (state.screen === "numQuiz" && state.mode === 1) state.input = document.getElementById("eng").value; state.revealed = true; render(); }
+  else if (d.act === "submitEng") submitEng();
+  else if (d.act === "submitNum") submitNumQuiz();
+  else if (d.act === "listen") startListening();
+  else if (d.act === "skip") { state.listening = false; finishNum(false); }
+  else if (d.mode) startNumQuiz(Number(d.mode));
   else if (d.n) { state.n = Number(d.n); render(); }
   else if (d.times) startTimes(Number(d.times));
   else if (d.say) speak(d.say);
@@ -449,6 +643,16 @@ app.addEventListener("click", (e) => {
 
 // 實體鍵盤也能作答（平板接鍵盤或電腦）
 document.addEventListener("keydown", (e) => {
+  if (state.screen === "numQuiz") {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (state.correct !== null) nextQuestion();
+      else if (state.mode === 1) submitEng();
+      else if (state.mode === 2) submitNumQuiz();
+    } else if (state.mode === 2 && /^[0-9]$/.test(e.key)) pressKey(e.key);
+    else if (state.mode === 2 && e.key === "Backspace") pressKey("⌫");
+    return;
+  }
   if (state.screen !== "math" && state.screen !== "timesQuiz") return;
   if (/^[0-9.]$/.test(e.key)) pressKey(e.key);
   else if (e.key === "Backspace") pressKey("⌫");

@@ -117,7 +117,7 @@ fun NumberQuizScreen(
 
 private val MaterialThemeSecondary = Color(0xFF42A5F5)
 
-private fun nextInput(input: String, key: String): String = when (key) {
+fun nextInput(input: String, key: String): String = when (key) {
     "⌫" -> input.dropLast(1)
     "." -> if ('.' in input) input else input.ifEmpty { "0" } + "."
     else -> when {
@@ -128,7 +128,7 @@ private fun nextInput(input: String, key: String): String = when (key) {
 }
 
 @Composable
-private fun NumberPad(allowDecimal: Boolean, onKey: (String) -> Unit) {
+fun NumberPad(allowDecimal: Boolean, onKey: (String) -> Unit) {
     val rows = listOf(
         listOf("1", "2", "3"),
         listOf("4", "5", "6"),

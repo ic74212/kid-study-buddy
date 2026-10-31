@@ -24,6 +24,8 @@ sealed interface Screen {
     data class TimesQuiz(val n: Int) : Screen
     data object EnglishCards : Screen
     data object EnglishQuiz : Screen
+    data object NumMenu : Screen
+    data class NumQuiz(val mode: Int) : Screen
     data class Result(val score: Int, val total: Int, val retry: Screen) : Screen
 }
 
@@ -39,7 +41,11 @@ fun App() {
 
     val goHome = { screen = Screen.Home }
     BackHandler(enabled = screen != Screen.Home) {
-        screen = if (screen is Screen.TimesQuiz) Screen.TimesTable else Screen.Home
+        screen = when (screen) {
+            is Screen.TimesQuiz -> Screen.TimesTable
+            is Screen.NumQuiz -> Screen.NumMenu
+            else -> Screen.Home
+        }
     }
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -94,6 +100,18 @@ fun App() {
                     speaker = speaker,
                     onBack = goHome,
                     onFinish = { score -> screen = Screen.Result(score, QUIZ_SIZE, Screen.EnglishQuiz) },
+                )
+
+                Screen.NumMenu -> NumMenuScreen(
+                    onBack = goHome,
+                    onStart = { mode -> screen = Screen.NumQuiz(mode) },
+                )
+
+                is Screen.NumQuiz -> NumQuizScreen(
+                    mode = s.mode,
+                    speaker = speaker,
+                    onBack = { screen = Screen.NumMenu },
+                    onFinish = { score -> screen = Screen.Result(score, 10, s) },
                 )
 
                 is Screen.Result -> ResultScreen(

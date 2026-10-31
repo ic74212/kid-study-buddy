@@ -73,11 +73,14 @@ fun HomeScreen(grade: Int, onGradeChange: (Int) -> Unit, onOpen: (Screen) -> Uni
         MenuCard("📝", "英文小測驗", "看圖選出正確的單字", Color(0xFFE1BEE7)) {
             onOpen(Screen.EnglishQuiz)
         }
+        MenuCard("🔟", "英文數字 1～10", "聽、寫、說三種題型", Color(0xFFFFF59D)) {
+            onOpen(Screen.NumMenu)
+        }
     }
 }
 
 @Composable
-private fun MenuCard(emoji: String, title: String, subtitle: String, color: Color, onClick: () -> Unit) {
+fun MenuCard(emoji: String, title: String, subtitle: String, color: Color, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
