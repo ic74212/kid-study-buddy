@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#FF8A3D">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="學習小夥伴">
+<title>學習小夥伴</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 108 108'><rect width='108' height='108' rx='24' fill='%23FF8A3D'/><path fill='white' d='M54 30L60.5 47.1L78.7 48L64.5 59.4L69.3 77L54 67L38.7 77L43.5 59.4L29.3 48L47.5 47.1Z'/></svg>">
+<style>
+  :root {
+    --orange: #FF8A3D; --green: #43A047; --red: #E53935; --blue: #42A5F5;
+    --cream: #FFF8EC; --ink: #3E2723; --gray: #8D8D8D;
+    --ok-bg: #C8E6C9; --bad-bg: #FFCDD2;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--cream); color: var(--ink);
+    font-family: -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-user-select: none; user-select: none;
+  }
+  #app {
+    max-width: 680px; margin: 0 auto; min-height: 100%;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  h1 { font-size: 34px; margin: 4px 0 0; }
+  h2 { font-size: 20px; margin: 4px 0 0; }
+  p { margin: 0; }
+  .muted { color: var(--gray); }
+  .center { text-align: center; }
+  .grow { flex: 1; }
+  button { font: inherit; color: inherit; border: none; cursor: pointer; touch-action: manipulation; }
+  button:disabled { opacity: .4; cursor: default; }
+  .big {
+    width: 100%; min-height: 64px; border-radius: 20px; background: var(--orange);
+    color: #fff; font-size: 24px; font-weight: 700;
+  }
+  .big.green { background: var(--green); } .big.blue { background: var(--blue); }
+  .row { display: flex; gap: 10px; }
+  .row > * { flex: 1; }
+  .topbar { display: flex; align-items: center; gap: 8px; }
+  .back { background: none; color: var(--orange); font-size: 18px; padding: 8px; }
+  .topbar .title { font-size: 22px; font-weight: 700; }
+  .grades { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+  .grade {
+    aspect-ratio: 1; max-height: 72px; border-radius: 50%; background: #fff; color: var(--orange);
+    font-size: 24px; font-weight: 700; box-shadow: 0 1px 3px #0002;
+  }
+  .grade.on { background: var(--orange); color: #fff; }
+  .menu { display: grid; gap: 12px; }
+  @media (min-width: 600px) { .menu { grid-template-columns: 1fr 1fr; } }
+  .card {
+    display: flex; align-items: center; gap: 16px; padding: 20px; border-radius: 24px;
+    text-align: left; width: 100%;
+  }
+  .card .emoji { font-size: 40px; }
+  .card b { display: block; font-size: 24px; }
+  .card span { font-size: 15px; }
+  .progress { height: 6px; background: #FFE0C7; border-radius: 3px; overflow: hidden; }
+  .progress > div { height: 100%; background: var(--orange); transition: width .3s; }
+  .question { font-size: 40px; font-weight: 700; text-align: center; margin-top: 8px; }
+  .answer {
+    background: #fff; border-radius: 20px; padding: 16px; min-height: 80px;
+    font-size: 40px; font-weight: 700; text-align: center;
+  }
+  .answer.ok, .opt.ok { background: var(--ok-bg); }
+  .answer.bad, .opt.bad { background: var(--bad-bg); }
+  .feedback { font-size: 26px; font-weight: 700; text-align: center; min-height: 36px; }
+  .feedback.ok { color: var(--green); } .feedback.bad { color: var(--red); }
+  .pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .key {
+    min-height: 60px; border-radius: 16px; background: #fff; font-size: 28px; font-weight: 700;
+    box-shadow: 0 1px 3px #0002;
+  }
+  .key:active, .opt:active, .grade:active, .card:active, .big:active { transform: scale(.97); }
+  .nums { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .num { min-height: 56px; border-radius: 16px; background: #fff; color: var(--green); font-size: 24px; font-weight: 700; }
+  .num.on { background: var(--green); color: #fff; }
+  .table { display: grid; gap: 4px; font-size: 30px; font-weight: 500; }
+  @media (min-width: 600px) { .table { grid-template-columns: 1fr 1fr 1fr; font-size: 26px; } }
+  .flash {
+    background: #fff; border-radius: 32px; box-shadow: 0 2px 8px #0002; padding: 24px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .flash .emoji { font-size: 110px; line-height: 1.2; }
+  .flash .en { font-size: 52px; font-weight: 700; color: var(--blue); }
+  .flash .zh { font-size: 30px; }
+  .opt {
+    width: 100%; min-height: 60px; border-radius: 16px; background: #fff;
+    font-size: 26px; font-weight: 700; box-shadow: 0 1px 3px #0002;
+  }
+  .opts { display: grid; gap: 10px; }
+  @media (min-width: 600px) { .opts { grid-template-columns: 1fr 1fr; } }
+  .result { justify-content: center; align-items: center; text-align: center; }
+  .stars { font-size: 48px; color: #FFB300; }
+
+  /* 平板：字和按鈕放大，按鈕跟著題目，不要掉到螢幕最底下 */
+  @media (min-width: 600px) and (min-height: 600px) {
+    #app { max-width: 760px; gap: 18px; padding-top: max(28px, env(safe-area-inset-top)); }
+    h1 { font-size: 44px; }
+    h2, .topbar .title { font-size: 26px; }
+    .back { font-size: 22px; }
+    .grade { font-size: 30px; max-height: 88px; }
+    .card { padding: 28px; }
+    .card .emoji { font-size: 52px; }
+    .card b { font-size: 30px; }
+    .card span { font-size: 18px; }
+    .question { font-size: 60px; margin-top: 24px; }
+    .answer { font-size: 56px; min-height: 100px; }
+    .feedback { font-size: 32px; }
+    .key { min-height: 84px; font-size: 36px; }
+    .pad { gap: 12px; }
+    .big { min-height: 76px; font-size: 28px; }
+    .num { min-height: 72px; font-size: 30px; }
+    .flash .emoji { font-size: 170px; }
+    .flash .en { font-size: 72px; }
+    .flash .zh { font-size: 40px; }
+    .opt { min-height: 84px; font-size: 34px; }
+    .grow { flex: 0 0 8px; }
+    .flash.grow { flex: 1; }
+    .result .grow { flex: 1; }
+  }
+  .score { font-size: 56px; font-weight: 700; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+"use strict";
+const QUIZ_SIZE = 10;
+
+// ---------- 題庫 ----------
+const gradeTopics = {
+  1: "20 以內加減、二位數加一位數",
+  2: "三位數加減、九九乘法",
+  3: "四位數加減、乘法、除法",
+  4: "多位數乘法、除法",
+  5: "小數加減、四則運算",
+  6: "小數乘除、括號運算",
+};
+
+const r = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const pick = (n) => r(0, n - 1);
+// 去掉浮點誤差，例如 0.1 + 0.2 → 0.3
+const clean = (x) => Number(x.toFixed(6));
+const q = (text, answer) => ({ text, answer: clean(answer) });
+const shuffle = (arr) => {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = pick(i + 1); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+};
+
+function mathQuestion(grade) {
+  switch (grade) {
+    case 1: switch (pick(3)) {
+      case 0: { const a = r(1, 10), b = r(1, 10); return q(`${a} + ${b}`, a + b); }
+      case 1: { const a = r(5, 20), b = r(1, a); return q(`${a} − ${b}`, a - b); }
+      default: { const a = r(10, 89), b = r(1, 9); return q(`${a} + ${b}`, a + b); }
+    }
+    case 2: switch (pick(4)) {
+      case 0: { const a = r(10, 499), b = r(10, 499); return q(`${a} + ${b}`, a + b); }
+      case 1: { const a = r(100, 999), b = r(10, a); return q(`${a} − ${b}`, a - b); }
+      default: { const a = r(2, 9), b = r(1, 9); return q(`${a} × ${b}`, a * b); }
+    }
+    case 3: switch (pick(4)) {
+      case 0: { const a = r(100, 4999), b = r(100, 4999); return q(`${a} + ${b}`, a + b); }
+      case 1: { const a = r(1000, 9999), b = r(100, a); return q(`${a} − ${b}`, a - b); }
+      case 2: { const a = r(11, 999), b = r(2, 9); return q(`${a} × ${b}`, a * b); }
+      default: { const d = r(2, 9), ans = r(2, 99); return q(`${d * ans} ÷ ${d}`, ans); }
+    }
+    case 4: switch (pick(3)) {
+      case 0: { const a = r(101, 999), b = r(11, 99); return q(`${a} × ${b}`, a * b); }
+      case 1: { const d = r(2, 9), ans = r(100, 999); return q(`${d * ans} ÷ ${d}`, ans); }
+      default: { const d = r(11, 40), ans = r(2, 50); return q(`${d * ans} ÷ ${d}`, ans); }
+    }
+    case 5: switch (pick(4)) {
+      case 0: { const a = r(11, 999) / 10, b = r(11, 999) / 10; return q(`${a} + ${b}`, a + b); }
+      case 1: { const au = r(100, 9999), a = au / 100, b = r(1, au) / 100; return q(`${a} − ${b}`, a - b); }
+      case 2: { const a = r(1, 50), b = r(2, 9), c = r(2, 9); return q(`${a} + ${b} × ${c}`, a + b * c); }
+      default: { const a = r(2, 12), b = r(2, 9), c = r(1, a * b); return q(`${a} × ${b} − ${c}`, a * b - c); }
+    }
+    default: switch (pick(4)) {
+      case 0: { const a = r(11, 99) / 10, b = r(2, 9); return q(`${a} × ${b}`, a * b); }
+      case 1: { const a = r(11, 99) / 10, b = r(1, 9) / 10; return q(`${a} × ${b}`, a * b); }
+      case 2: { const a = r(2, 30), b = r(2, 30), c = r(2, 9); return q(`(${a} + ${b}) × ${c}`, (a + b) * c); }
+      default: { const ans = r(11, 99) / 10, d = r(2, 9); return q(`${clean(ans * d)} ÷ ${d}`, ans); }
+    }
+  }
+}
+
+function timesQuestions(n) {
+  return Array.from({ length: QUIZ_SIZE }, () => {
+    const a = n === 0 ? r(2, 9) : n, b = r(1, 9);
+    return q(`${a} × ${b}`, a * b);
+  });
+}
+
+const W = (en, zh, emoji) => ({ en, zh, emoji });
+const words = {
+  1: [W("cat","貓","🐱"),W("dog","狗","🐶"),W("apple","蘋果","🍎"),W("egg","蛋","🥚"),W("fish","魚","🐟"),W("ball","球","⚽"),
+      W("sun","太陽","☀️"),W("car","汽車","🚗"),W("book","書","📖"),W("milk","牛奶","🥛"),W("bird","鳥","🐦"),W("hat","帽子","👒")],
+  2: [W("red","紅色","🔴"),W("blue","藍色","🔵"),W("green","綠色","🟢"),W("yellow","黃色","🟡"),W("one","一","1️⃣"),W("two","二","2️⃣"),
+      W("three","三","3️⃣"),W("mom","媽媽","👩"),W("dad","爸爸","👨"),W("banana","香蕉","🍌"),W("pig","豬","🐷"),W("duck","鴨子","🦆")],
+  3: [W("eye","眼睛","👁️"),W("ear","耳朵","👂"),W("nose","鼻子","👃"),W("mouth","嘴巴","👄"),W("hand","手","✋"),W("foot","腳","🦶"),
+      W("happy","開心","😄"),W("sad","難過","😢"),W("cake","蛋糕","🍰"),W("juice","果汁","🧃"),W("rabbit","兔子","🐰"),W("tiger","老虎","🐯")],
+  4: [W("teacher","老師","👩‍🏫"),W("student","學生","🧑‍🎓"),W("doctor","醫生","🧑‍⚕️"),W("school","學校","🏫"),W("park","公園","🏞️"),W("rain","下雨","🌧️"),
+      W("snow","雪","❄️"),W("hot","熱","🥵"),W("cold","冷","🥶"),W("run","跑","🏃"),W("swim","游泳","🏊"),W("sing","唱歌","🎤")],
+  5: [W("breakfast","早餐","🍳"),W("lunch","午餐","🍱"),W("dinner","晚餐","🍽️"),W("bicycle","腳踏車","🚲"),W("train","火車","🚆"),W("airplane","飛機","✈️"),
+      W("hospital","醫院","🏥"),W("library","圖書館","📚"),W("birthday","生日","🎂"),W("music","音樂","🎵"),W("basketball","籃球","🏀"),W("sandwich","三明治","🥪")],
+  6: [W("computer","電腦","💻"),W("telephone","電話","☎️"),W("umbrella","雨傘","☂️"),W("elephant","大象","🐘"),W("giraffe","長頸鹿","🦒"),W("dolphin","海豚","🐬"),
+      W("mountain","山","⛰️"),W("ocean","海洋","🌊"),W("island","島嶼","🏝️"),W("firefighter","消防員","🧑‍🚒"),W("vegetable","蔬菜","🥦"),W("dictionary","字典","📕")],
+};
+
+// ---------- 小工具 ----------
+function speak(text) {
+  if (!("speechSynthesis" in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "en-US"; u.rate = 0.8;
+  speechSynthesis.speak(u);
+}
+
+const store = {
+  get grade() { try { return Number(localStorage.getItem("grade")) || 2; } catch { return 2; } },
+  set grade(v) { try { localStorage.setItem("grade", String(v)); } catch {} },
+};
+
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+// ---------- 畫面 ----------
+const app = document.getElementById("app");
+let state = { screen: "home", grade: store.grade };
+
+function go(screen, extra = {}) {
+  state = { grade: state.grade, screen, ...extra };
+  app.classList.toggle("result", screen === "result");
+  history.replaceState(null, "", "#" + screen);
+  render();
+  window.scrollTo(0, 0);
+}
+
+function topbar(title, back = "home") {
+  return `<div class="topbar"><button class="back" data-go="${back}">← 返回</button><span class="title">${esc(title)}</span></div>`;
+}
+
+function render() {
+  const s = state;
+  switch (s.screen) {
+    case "home": return renderHome();
+    case "math": return renderNumberQuiz();
+    case "times": return renderTimes();
+    case "timesQuiz": return renderNumberQuiz();
+    case "cards": return renderCards();
+    case "english": return renderEnglishQuiz();
+    case "result": return renderResult();
+  }
+}
+
+function renderHome() {
+  const g = state.grade;
+  app.innerHTML = `
+    <h1>📚 學習小夥伴</h1>
+    <p style="font-size:18px">今天也一起加油吧！</p>
+    <h2>我是幾年級？</h2>
+    <div class="grades">${[1,2,3,4,5,6].map(n => `<button class="grade ${n===g?"on":""}" data-grade="${n}">${n}</button>`).join("")}</div>
+    <p class="muted">目前：${g} 年級</p>
+    <div class="menu">
+      <button class="card" style="background:#FFE0B2" data-go="math"><span class="emoji">🔢</span><div><b>數學練習</b><span>${gradeTopics[g]}</span></div></button>
+      <button class="card" style="background:#C8E6C9" data-go="times"><span class="emoji">✖️</span><div><b>九九乘法</b><span>背乘法表、挑戰小測驗</span></div></button>
+      <button class="card" style="background:#BBDEFB" data-go="cards"><span class="emoji">🔤</span><div><b>英文單字卡</b><span>看圖、聽發音、記單字</span></div></button>
+      <button class="card" style="background:#E1BEE7" data-go="english"><span class="emoji">📝</span><div><b>英文小測驗</b><span>看圖選出正確的單字</span></div></button>
+    </div>`;
+}
+
+function startQuiz(screen, questions, title, back) {
+  go(screen, { questions, title, back, index: 0, score: 0, input: "", correct: null });
+}
+
+function renderNumberQuiz() {
+  const s = state, item = s.questions[s.index], last = s.index === s.questions.length - 1;
+  const allowDot = s.screen === "math" && s.grade >= 5;
+  const cls = s.correct === null ? "" : s.correct ? "ok" : "bad";
+  const keys = ["1","2","3","4","5","6","7","8","9", allowDot ? "." : "", "0", "⌫"];
+  app.innerHTML = `
+    ${topbar(s.title, s.back)}
+    <p class="center" style="font-size:18px">第 ${s.index + 1} / ${s.questions.length} 題　⭐ ${s.score}</p>
+    <div class="progress"><div style="width:${s.index / s.questions.length * 100}%"></div></div>
+    <div class="question">${esc(item.text)} = ?</div>
+    <div class="answer ${cls}">${esc(s.input) || "&nbsp;"}</div>
+    <div class="feedback ${cls}">${s.correct === null ? "" : s.correct ? "🎉 答對了！好棒！" : `💪 正確答案是 ${item.answer}`}</div>
+    <div class="grow"></div>
+    ${s.correct === null ? `
+      <div class="pad">${keys.map(k => k ? `<button class="key" data-key="${k}">${k}</button>` : "<span></span>").join("")}</div>
+      <button class="big" data-act="submit" ${s.input ? "" : "disabled"}>確定</button>
+    ` : `<button class="big blue" data-act="next">${last ? "看成績 🏆" : "下一題 →"}</button>`}`;
+}
+
+function pressKey(k) {
+  const s = state;
+  if (s.correct !== null) return;
+  if (k === "⌫") s.input = s.input.slice(0, -1);
+  else if (k === ".") { if (!s.input.includes(".")) s.input = (s.input || "0") + "."; }
+  else if (s.input.length < 9) s.input = s.input === "0" ? k : s.input + k;
+  render();
+}
+
+function submitNumber() {
+  const s = state, v = parseFloat(s.input);
+  if (!s.input || s.correct !== null) return;
+  s.correct = !isNaN(v) && Math.abs(v - s.questions[s.index].answer) < 1e-9;
+  if (s.correct) s.score++;
+  render();
+}
+
+function nextQuestion() {
+  const s = state;
+  if (s.index === s.questions.length - 1) {
+    const retry = s.screen === "math" ? { screen: "math" } : s.screen === "timesQuiz" ? { screen: "timesQuiz", n: s.n } : { screen: "english" };
+    go("result", { score: s.score, total: s.questions.length, retry });
+  } else {
+    s.index++; s.input = ""; s.correct = null; s.chosen = null;
+    render();
+  }
+}
+
+function renderTimes() {
+  const n = state.n || 2;
+  app.innerHTML = `
+    ${topbar("九九乘法")}
+    <p style="font-size:18px">選一個數字：</p>
+    <div class="nums">${[2,3,4,5,6,7,8,9].map(k => `<button class="num ${k===n?"on":""}" data-n="${k}">${k}</button>`).join("")}</div>
+    <div class="table">${[1,2,3,4,5,6,7,8,9].map(b => `<div>${n} × ${b} = ${n * b}</div>`).join("")}</div>
+    <div class="grow"></div>
+    <button class="big green" data-times="${n}">挑戰 ${n} 的乘法</button>
+    <button class="big" data-times="0">2～9 混合挑戰</button>`;
+}
+
+function renderCards() {
+  const list = words[state.grade], i = state.index || 0, w = list[i];
+  app.innerHTML = `
+    ${topbar("英文單字卡")}
+    <p class="center" style="font-size:18px">${i + 1} / ${list.length}</p>
+    <div class="flash grow" data-say="${esc(w.en)}">
+      <div class="emoji">${w.emoji}</div>
+      <div class="en">${esc(w.en)}</div>
+      <div class="zh">${esc(w.zh)}</div>
+      <p class="muted" style="margin-top:16px">👆 點一下聽發音</p>
+    </div>
+    <button class="big blue" data-say="${esc(w.en)}">🔊 聽發音</button>
+    <div class="row">
+      <button class="big" data-card="-1">◀ 上一個</button>
+      <button class="big" data-card="1">下一個 ▶</button>
+    </div>`;
+}
+
+function newEnglishQuiz() {
+  const list = words[state.grade];
+  const targets = shuffle(list).concat(shuffle(list)).slice(0, QUIZ_SIZE);
+  const questions = targets.map(t => ({ target: t, options: shuffle(shuffle(list.filter(w => w !== t)).slice(0, 3).concat([t])) }));
+  return { questions, index: 0, score: 0, chosen: null };
+}
+
+function renderEnglishQuiz() {
+  const s = state, item = s.questions[s.index], last = s.index === s.questions.length - 1;
+  const answered = s.chosen !== null;
+  const ok = answered && s.chosen === item.target.en;
+  app.innerHTML = `
+    ${topbar("英文小測驗")}
+    <p class="center" style="font-size:18px">第 ${s.index + 1} / ${s.questions.length} 題　⭐ ${s.score}</p>
+    <div class="progress"><div style="width:${s.index / s.questions.length * 100}%"></div></div>
+    <div class="center" style="font-size:80px;line-height:1.2">${item.target.emoji}</div>
+    <div class="center" style="font-size:30px;font-weight:700">${esc(item.target.zh)}</div>
+    <p class="center muted" style="font-size:18px">英文是哪一個？</p>
+    <div class="opts">${item.options.map(o => {
+      const c = !answered ? "" : o === item.target ? "ok" : o.en === s.chosen ? "bad" : "";
+      return `<button class="opt ${c}" data-opt="${esc(o.en)}">${esc(o.en)}</button>`;
+    }).join("")}</div>
+    <div class="grow"></div>
+    ${answered ? `
+      <div class="feedback ${ok ? "ok" : "bad"}">${ok ? "🎉 答對了！" : `💪 答案是 ${esc(item.target.en)}`}</div>
+      <button class="big blue" data-act="next">${last ? "看成績 🏆" : "下一題 →"}</button>` : ""}`;
+}
+
+function chooseOption(en) {
+  const s = state;
+  if (s.chosen !== null) return;
+  const item = s.questions[s.index];
+  s.chosen = en;
+  if (en === item.target.en) s.score++;
+  speak(item.target.en);
+  render();
+}
+
+function renderResult() {
+  const s = state, ratio = s.score / s.total;
+  const stars = ratio >= 0.9 ? 3 : ratio >= 0.7 ? 2 : ratio >= 0.5 ? 1 : 0;
+  const msg = ["沒關係，我們再試一次！", "不錯喔！多練習會更厲害！", "很棒喔！再練習一下就滿分了！", "太厲害了！你是學習小天才！"][stars];
+  app.innerHTML = `
+    <div class="grow"></div>
+    <div style="font-size:100px">${stars === 3 ? "🏆" : "🎈"}</div>
+    <div class="stars">${"⭐".repeat(stars)}${"☆".repeat(3 - stars)}</div>
+    <div class="score">${s.score} / ${s.total}</div>
+    <p style="font-size:22px">${msg}</p>
+    <div style="height:24px"></div>
+    <button class="big green" data-act="retry">再玩一次 🔁</button>
+    <button class="big" data-go="home">回首頁 🏠</button>
+    <div class="grow"></div>`;
+}
+
+function retry() {
+  const r = state.retry;
+  if (r.screen === "math") openScreen("math");
+  else if (r.screen === "timesQuiz") startTimes(r.n);
+  else openScreen("english");
+}
+
+function startTimes(n) {
+  startQuiz("timesQuiz", timesQuestions(n), n === 0 ? "九九乘法 · 混合" : `九九乘法 · ${n} 的乘法`, "times");
+  state.n = n;
+}
+
+function openScreen(screen) {
+  if (screen === "math") startQuiz("math", Array.from({ length: QUIZ_SIZE }, () => mathQuestion(state.grade)), `數學練習 · ${state.grade} 年級`, "home");
+  else if (screen === "english") go("english", newEnglishQuiz());
+  else if (screen === "cards") go("cards", { index: 0 });
+  else go(screen);
+}
+
+// ---------- 事件 ----------
+app.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-go],[data-grade],[data-key],[data-act],[data-n],[data-times],[data-say],[data-card],[data-opt]");
+  if (!b || b.disabled) return;
+  const d = b.dataset;
+  if (d.go) openScreen(d.go);
+  else if (d.grade) { state.grade = Number(d.grade); store.grade = state.grade; render(); }
+  else if (d.key) pressKey(d.key);
+  else if (d.act === "submit") submitNumber();
+  else if (d.act === "next") nextQuestion();
+  else if (d.act === "retry") retry();
+  else if (d.n) { state.n = Number(d.n); render(); }
+  else if (d.times) startTimes(Number(d.times));
+  else if (d.say) speak(d.say);
+  else if (d.card) { const n = words[state.grade].length; state.index = ((state.index || 0) + Number(d.card) + n) % n; render(); }
+  else if (d.opt) chooseOption(d.opt);
+});
+
+// 實體鍵盤也能作答（平板接鍵盤或電腦）
+document.addEventListener("keydown", (e) => {
+  if (state.screen !== "math" && state.screen !== "timesQuiz") return;
+  if (/^[0-9.]$/.test(e.key)) pressKey(e.key);
+  else if (e.key === "Backspace") pressKey("⌫");
+  else if (e.key === "Enter") state.correct === null ? submitNumber() : nextQuestion();
+});
+
+render();
+</script>
+</body>
+</html>

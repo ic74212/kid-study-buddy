@@ -27,6 +27,15 @@
 
 用手機打開上面的連結下載後安裝（第一次需要允許「安裝未知來源的應用程式」）。
 
+## 網頁版（平板、iPad、電腦）
+
+功能跟 APK 一樣，用瀏覽器打開就能用：
+
+👉 https://ic74212.github.io/kid-study-buddy/
+
+在 iPad / 平板上可以按「分享 → 加入主畫面」，就會像 App 一樣出現在桌面。
+網頁版的程式在 `web/index.html`，推送到 `main` 分支後會自動更新到 GitHub Pages。
+
 ## 開發
 
 - Kotlin + Jetpack Compose，minSdk 26（Android 8.0）
